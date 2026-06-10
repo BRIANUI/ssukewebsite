@@ -1,29 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { SiteHeader } from "@/components/site-header";
+import { Hero } from "@/components/hero";
+import { MenuSection } from "@/components/menu-section";
+import { CartSheet } from "@/components/cart-sheet";
+import { SiteFooter } from "@/components/site-footer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Ssuke Pizza — Order Pizzas, Burgers & Kenyan Classics" },
+      { name: "description", content: "Bold pizzas, smashed burgers, crispy chicken and Kenyan favorites — delivered hot from Ssuke Pizza in Nairobi." },
+      { property: "og:title", content: "Ssuke Pizza — Bold Flavors, Delivered Hot" },
+      { property: "og:description", content: "Order online for fast delivery across Nairobi." },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <SiteHeader />
+      <main>
+        <Hero />
+        <MenuSection />
+      </main>
+      <SiteFooter />
+      <CartSheet />
     </div>
   );
 }
