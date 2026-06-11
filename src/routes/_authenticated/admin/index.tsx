@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { formatKES } from "@/lib/cart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,12 @@ const statusColor: Record<string, string> = {
 };
 
 async function fetchOrders() {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*, order_items(*)")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const snap = await getDocs(query(collection(db, "orders"), orderBy("created_at", "desc")));
+  return snap.docs.map((d) => {
+    const data = d.data() as any;
+    const created = data.created_at?.toDate?.() ?? new Date();
+    return { id: d.id, ...data, created_at: created.toISOString(), order_items: data.items ?? [] };
+  });
 }
 
 function OrdersPage() {
@@ -40,8 +41,7 @@ function OrdersPage() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("orders").update({ status }).eq("id", id);
-      if (error) throw error;
+      await updateDoc(doc(db, "orders", id), { status });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "orders"] }); toast.success("Order updated"); },
     onError: (e: Error) => toast.error(e.message),
@@ -49,8 +49,7 @@ function OrdersPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("orders").delete().eq("id", id);
-      if (error) throw error;
+      await deleteDoc(doc(db, "orders", id));
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "orders"] }); toast.success("Order deleted"); },
     onError: (e: Error) => toast.error(e.message),
@@ -106,8 +105,8 @@ function OrdersPage() {
                     <div>
                       <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Items</div>
                       <ul className="mt-1 space-y-1">
-                        {o.order_items.map((it: any) => (
-                          <li key={it.id} className="flex justify-between">
+                        {o.order_items.map((it: any, idx: number) => (
+                          <li key={it.menu_item_id ?? idx} className="flex justify-between">
                             <span>{it.quantity}× {it.name}</span>
                             <span className="tabular-nums">{formatKES(Number(it.subtotal))}</span>
                           </li>
