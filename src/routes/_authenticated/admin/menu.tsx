@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { DEFAULT_MENU } from "@/lib/menu-seed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatKES } from "@/lib/cart";
@@ -22,9 +24,10 @@ type MenuRow = {
 };
 
 async function fetchAll(): Promise<MenuRow[]> {
-  const { data, error } = await supabase.from("menu_items").select("*").order("sort_order");
-  if (error) throw error;
-  return (data ?? []) as MenuRow[];
+  const snap = await getDocs(collection(db, "menu_items"));
+  const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MenuRow, "id">) }));
+  rows.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return rows;
 }
 
 const empty: Partial<MenuRow> = { name: "", description: "", price: 0, category: "", image_url: "", available: true, sort_order: 0 };
@@ -42,11 +45,9 @@ function MenuAdmin() {
         available: !!row.available, sort_order: Number(row.sort_order) || 0,
       };
       if (row.id) {
-        const { error } = await supabase.from("menu_items").update(payload).eq("id", row.id);
-        if (error) throw error;
+        await updateDoc(doc(db, "menu_items", row.id), payload);
       } else {
-        const { error } = await supabase.from("menu_items").insert(payload);
-        if (error) throw error;
+        await addDoc(collection(db, "menu_items"), payload);
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "menu"] }); qc.invalidateQueries({ queryKey: ["menu", "public"] }); setEditing(null); toast.success("Saved"); },
@@ -55,10 +56,22 @@ function MenuAdmin() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("menu_items").delete().eq("id", id);
-      if (error) throw error;
+      await deleteDoc(doc(db, "menu_items", id));
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "menu"] }); qc.invalidateQueries({ queryKey: ["menu", "public"] }); toast.success("Deleted"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const seed = useMutation({
+    mutationFn: async () => {
+      const batch = writeBatch(db);
+      DEFAULT_MENU.forEach((item, idx) => {
+        const ref = doc(collection(db, "menu_items"));
+        batch.set(ref, { ...item, sort_order: idx });
+      });
+      await batch.commit();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "menu"] }); qc.invalidateQueries({ queryKey: ["menu", "public"] }); toast.success("Seeded default menu"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -69,7 +82,14 @@ function MenuAdmin() {
           <h1 className="font-display text-4xl tracking-wide">Menu</h1>
           <p className="text-sm text-muted-foreground">{data?.length ?? 0} items</p>
         </div>
-        <Button onClick={() => setEditing({ ...empty })} className="gap-2"><Plus className="h-4 w-4" /> New item</Button>
+        <div className="flex gap-2">
+          {data?.length === 0 && (
+            <Button variant="secondary" onClick={() => seed.mutate()} disabled={seed.isPending} className="gap-2">
+              {seed.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Seed default menu
+            </Button>
+          )}
+          <Button onClick={() => setEditing({ ...empty })} className="gap-2"><Plus className="h-4 w-4" /> New item</Button>
+        </div>
       </div>
 
       {isLoading ? (
