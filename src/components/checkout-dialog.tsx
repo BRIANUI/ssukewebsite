@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatKES, useCart } from "@/lib/cart";
 import { useState } from "react";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
@@ -32,21 +33,21 @@ export function CheckoutDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     if (items.length === 0) return;
     setSubmitting(true);
     try {
-      const { data: order, error } = await supabase.from("orders").insert({
+      const ref = await addDoc(collection(db, "orders"), {
         customer_name: parsed.data.customer_name,
         customer_phone: parsed.data.customer_phone,
         customer_email: parsed.data.customer_email || null,
         delivery_address: parsed.data.delivery_address,
         notes: parsed.data.notes || null,
         subtotal, delivery_fee: DELIVERY_FEE, total,
-      }).select("id").single();
-      if (error || !order) throw error;
-      const { error: ie } = await supabase.from("order_items").insert(items.map((i) => ({
-        order_id: order.id, menu_item_id: i.id, name: i.name,
-        unit_price: i.price, quantity: i.quantity, subtotal: i.price * i.quantity,
-      })));
-      if (ie) throw ie;
-      setSuccess(order.id); clear(); setOpen(false);
+        status: "pending",
+        items: items.map((i) => ({
+          menu_item_id: i.id, name: i.name,
+          unit_price: i.price, quantity: i.quantity, subtotal: i.price * i.quantity,
+        })),
+        created_at: serverTimestamp(),
+      });
+      setSuccess(ref.id); clear(); setOpen(false);
     } catch (err) {
       console.error(err); toast.error("Couldn't place your order. Please try again.");
     } finally { setSubmitting(false); }

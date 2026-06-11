@@ -1,19 +1,18 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { ProductDialog, type MenuItem } from "@/components/product-dialog";
 import { formatKES } from "@/lib/cart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
 
 async function fetchMenu(): Promise<MenuItem[]> {
-  const { data, error } = await supabase
-    .from("menu_items")
-    .select("id,name,description,price,category,image_url,available")
-    .eq("available", true)
-    .order("sort_order", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as MenuItem[];
+  const q = query(collection(db, "menu_items"), where("available", "==", true));
+  const snap = await getDocs(q);
+  const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MenuItem, "id"> & { sort_order?: number }) }));
+  items.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return items as MenuItem[];
 }
 
 export function MenuSection() {
