@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -83,9 +84,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Order pizzas, burgers, chicken and Kenyan classics from Ssuke Pizza. Fast delivery, made fresh." },
       { name: "author", content: "Ssuke Pizza" },
       { property: "og:title", content: "Ssuke Pizza — Bold Flavors, Delivered Hot" },
-      { property: "og:description", content: "Order pizzas, burgers, chicken and Kenyan classics from Ssuke Pizza." },
+      { property: "og:description", content: "Order pizzas, burgers, chicken and Kenyan classics from Ssuke Pizza. Fast delivery, made fresh." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Ssuke Pizza — Bold Flavors, Delivered Hot" },
+      { name: "twitter:description", content: "Order pizzas, burgers, chicken and Kenyan classics from Ssuke Pizza. Fast delivery, made fresh." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11644781-730c-4cf7-89a4-0536ed7b072e/id-preview-18276ae0--82744244-169d-4861-a236-ef474ad8084e.lovable.app-1781182750707.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11644781-730c-4cf7-89a4-0536ed7b072e/id-preview-18276ae0--82744244-169d-4861-a236-ef474ad8084e.lovable.app-1781182750707.png" },
     ],
     links: [
       {
@@ -122,6 +127,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
