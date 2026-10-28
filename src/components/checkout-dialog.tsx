@@ -13,10 +13,10 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 
 const DELIVERY_FEE = 150;
 const schema = z.object({
-  customer_name: z.string().trim().min(2).max(80),
-  customer_phone: z.string().trim().min(7).max(20),
-  customer_email: z.string().trim().email().max(200).optional().or(z.literal("")),
-  delivery_address: z.string().trim().min(5).max(300),
+  customer_name: z.string().trim().min(2, "Name is too short").max(80),
+  customer_phone: z.string().trim().min(7, "Phone is too short").max(20),
+  customer_email: z.string().trim().email("Invalid email").max(200).optional().or(z.literal("")),
+  delivery_address: z.string().trim().min(2, "Address is too short").max(300),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 

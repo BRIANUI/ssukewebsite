@@ -7,12 +7,52 @@ import { formatKES } from "@/lib/cart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
 
+const MOCK_PRODUCTS: MenuItem[] = [
+  {
+    id: "1",
+    name: "Classic Margherita",
+    description: "Tomato sauce, mozzarella, and fresh basil.",
+    price: 1200,
+    category: "Pizzas",
+    available: true,
+    image_url: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&q=80",
+    sort_order: 1
+  },
+  {
+    id: "2",
+    name: "Pepperoni Feast",
+    description: "Double pepperoni, mozzarella, and tomato sauce.",
+    price: 1500,
+    category: "Pizzas",
+    available: true,
+    image_url: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500&q=80",
+    sort_order: 2
+  },
+  {
+    id: "3",
+    name: "Garlic Bread",
+    description: "Freshly baked bread with garlic butter and herbs.",
+    price: 400,
+    category: "Sides",
+    available: true,
+    image_url: "https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=500&q=80",
+    sort_order: 3
+  }
+];
+
 async function fetchMenu(): Promise<MenuItem[]> {
-  const q = query(collection(db, "menu_items"), where("available", "==", true));
-  const snap = await getDocs(q);
-  const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MenuItem, "id"> & { sort_order?: number }) }));
-  items.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  return items as MenuItem[];
+  try {
+    const q = query(collection(db, "menu_items"), where("available", "==", true));
+    const snap = await getDocs(q);
+    const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MenuItem, "id"> & { sort_order?: number }) }));
+    if (items.length > 0) {
+      items.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      return items as MenuItem[];
+    }
+  } catch (error) {
+    console.error("Failed to fetch from Firebase, using mocks", error);
+  }
+  return MOCK_PRODUCTS;
 }
 
 export function MenuSection() {

@@ -1,4 +1,3 @@
-import logo from "@/assets/ssuke-logo.png.asset.json";
 import { MapPin, Phone, Clock } from "lucide-react";
 
 export function SiteFooter() {
@@ -7,7 +6,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-3">
-            <img src={logo.url} alt="Ssuke Pizza" width={48} height={48} className="h-12 w-12 rounded-xl" />
+            <img src="/logo.png" alt="Ssuke Pizza" className="h-10 w-10 rounded-lg shadow-sm" />
             <div>
               <div className="font-display text-3xl tracking-wide">SSUKE PIZZA</div>
               <div className="text-xs uppercase tracking-[0.2em] opacity-70">Bold. Hot. Delivered.</div>
@@ -18,15 +17,14 @@ export function SiteFooter() {
         <div id="about">
           <h4 className="font-display text-xl tracking-wide">Hours</h4>
           <ul className="mt-3 space-y-1.5 text-sm opacity-90">
-            <li className="flex items-center gap-2"><Clock className="h-4 w-4" /> Mon–Thu · 10am – 11pm</li>
-            <li className="flex items-center gap-2"><Clock className="h-4 w-4" /> Fri–Sun · 10am – 1am</li>
+            <li className="flex items-center gap-2"><Clock className="h-4 w-4" /> Open 24/7</li>
           </ul>
         </div>
         <div>
           <h4 className="font-display text-xl tracking-wide">Reach us</h4>
           <ul className="mt-3 space-y-1.5 text-sm opacity-90">
-            <li className="flex items-center gap-2"><Phone className="h-4 w-4" /> +254 700 000 000</li>
-            <li className="flex items-center gap-2"><MapPin className="h-4 w-4" /> Ngong Road, Nairobi</li>
+            <li className="flex items-center gap-2"><Phone className="h-4 w-4" /> 0741254279 / 0734343035</li>
+            <li className="flex items-center gap-2"><MapPin className="h-4 w-4" /> Buruburu shopping centre, Mtindwa</li>
           </ul>
         </div>
       </div>

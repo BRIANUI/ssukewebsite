@@ -35,16 +35,28 @@ async function fetchOrders() {
   });
 }
 
+function firebaseErrorMessage(error: unknown, action: string) {
+  const code = (error as { code?: string })?.code;
+  if (code === "permission-denied") {
+    return `Permission denied — sign in with a Firebase admin account and deploy firestore.rules. (${action})`;
+  }
+  return error instanceof Error ? error.message : `Failed to ${action}`;
+}
+
 function OrdersPage() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["admin", "orders"], queryFn: fetchOrders });
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["admin", "orders"],
+    queryFn: fetchOrders,
+    retry: false,
+  });
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       await updateDoc(doc(db, "orders", id), { status });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "orders"] }); toast.success("Order updated"); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(firebaseErrorMessage(e, "update order")),
   });
 
   const remove = useMutation({
@@ -52,7 +64,7 @@ function OrdersPage() {
       await deleteDoc(doc(db, "orders", id));
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "orders"] }); toast.success("Order deleted"); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(firebaseErrorMessage(e, "delete order")),
   });
 
   return (
@@ -65,6 +77,11 @@ function OrdersPage() {
       </div>
       {isLoading ? (
         <div className="grid place-items-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : isError ? (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+          <p className="font-semibold text-destructive">Could not load orders</p>
+          <p className="mt-2 text-sm text-muted-foreground">{firebaseErrorMessage(error, "load orders")}</p>
+        </div>
       ) : !data?.length ? (
         <div className="rounded-2xl border border-dashed border-border bg-background p-12 text-center text-muted-foreground">No orders yet.</div>
       ) : (

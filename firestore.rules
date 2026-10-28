@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /menu_items/{itemId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    match /orders/{orderId} {
+      allow create: if request.resource.data.keys().hasAll([
+          'customer_name',
+          'customer_phone',
+          'delivery_address',
+          'subtotal',
+          'delivery_fee',
+          'total',
+          'status',
+          'items',
+          'created_at',
+        ])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0;
+
+      allow read, update, delete: if request.auth != null;
+    }
+  }
+}

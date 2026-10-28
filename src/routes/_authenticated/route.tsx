@@ -3,8 +3,9 @@ import { isAdminSignedIn } from "@/lib/admin-auth";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: () => {
-    if (!isAdminSignedIn()) throw redirect({ to: "/auth" });
+  beforeLoad: async () => {
+    const isSignedIn = await isAdminSignedIn();
+    if (!isSignedIn) throw redirect({ to: "/auth" });
   },
   component: () => <Outlet />,
 });

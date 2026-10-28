@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { ShoppingBag, ShieldCheck } from "lucide-react";
-import logo from "@/assets/ssuke-logo.png.asset.json";
 import { useCart } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +9,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/65">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-3">
-          <img src={logo.url} alt="Ssuke Pizza" width={40} height={40} className="h-10 w-10 rounded-lg shadow-sm" />
+          <img src="/logo.png" alt="Ssuke Pizza" width={40} height={40} className="h-10 w-10 rounded-lg shadow-sm" />
           <div className="leading-none">
             <div className="font-display text-2xl tracking-wide text-foreground">SSUKE PIZZA</div>
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Bold. Hot. Delivered.</div>

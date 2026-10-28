@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc, writeBatch } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import { DEFAULT_MENU } from "@/lib/menu-seed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,12 +31,42 @@ async function fetchAll(): Promise<MenuRow[]> {
   return rows;
 }
 
+function firebaseErrorMessage(error: unknown, action: string) {
+  const code = (error as { code?: string })?.code;
+  if (code === "permission-denied") {
+    return `Permission denied — sign in with a Firebase admin account and deploy firestore.rules. (${action})`;
+  }
+  return error instanceof Error ? error.message : `Failed to ${action}`;
+}
+
 const empty: Partial<MenuRow> = { name: "", description: "", price: 0, category: "", image_url: "", available: true, sort_order: 0 };
 
 function MenuAdmin() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["admin", "menu"], queryFn: fetchAll });
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["admin", "menu"],
+    queryFn: fetchAll,
+    retry: false,
+  });
   const [editing, setEditing] = useState<Partial<MenuRow> | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const storageRef = ref(storage, `menu-images/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      setEditing(prev => prev ? { ...prev, image_url: downloadURL } : null);
+      toast.success("Image uploaded successfully");
+    } catch (error: any) {
+      toast.error("Failed to upload image: " + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const save = useMutation({
     mutationFn: async (row: Partial<MenuRow>) => {
@@ -51,7 +82,7 @@ function MenuAdmin() {
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "menu"] }); qc.invalidateQueries({ queryKey: ["menu", "public"] }); setEditing(null); toast.success("Saved"); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(firebaseErrorMessage(e, "save menu item")),
   });
 
   const remove = useMutation({
@@ -59,7 +90,7 @@ function MenuAdmin() {
       await deleteDoc(doc(db, "menu_items", id));
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "menu"] }); qc.invalidateQueries({ queryKey: ["menu", "public"] }); toast.success("Deleted"); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(firebaseErrorMessage(e, "delete menu item")),
   });
 
   const seed = useMutation({
@@ -72,7 +103,7 @@ function MenuAdmin() {
       await batch.commit();
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "menu"] }); qc.invalidateQueries({ queryKey: ["menu", "public"] }); toast.success("Seeded default menu"); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(firebaseErrorMessage(e, "seed menu")),
   });
 
   return (
@@ -94,6 +125,11 @@ function MenuAdmin() {
 
       {isLoading ? (
         <div className="grid place-items-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : isError ? (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+          <p className="font-semibold text-destructive">Could not load menu</p>
+          <p className="mt-2 text-sm text-muted-foreground">{firebaseErrorMessage(error, "load menu")}</p>
+        </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-background">
           <table className="w-full text-sm">
@@ -147,7 +183,14 @@ function MenuAdmin() {
                 <div><Label>Category</Label><Input value={editing.category ?? ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} /></div>
                 <div><Label>Price (KES)</Label><Input type="number" step="1" value={editing.price ?? 0} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></div>
               </div>
-              <div><Label>Image URL</Label><Input value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} placeholder="https://..." /></div>
+              <div>
+                <Label>Image URL or Upload</Label>
+                <div className="flex flex-col gap-2">
+                  <Input value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} placeholder="https://..." />
+                  <Input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} />
+                  {uploadingImage && <span className="text-xs text-muted-foreground flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Uploading...</span>}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Sort order</Label><Input type="number" value={editing.sort_order ?? 0} onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })} /></div>
                 <div className="flex items-end gap-3"><Switch checked={!!editing.available} onCheckedChange={(v) => setEditing({ ...editing, available: v })} /><Label>Available</Label></div>

@@ -14,7 +14,7 @@ function AdminLayout() {
   const router = useRouter();
 
   async function signOut() {
-    signOutAdmin();
+    await signOutAdmin();
     toast.success("Signed out");
     await router.invalidate();
     navigate({ to: "/auth" });

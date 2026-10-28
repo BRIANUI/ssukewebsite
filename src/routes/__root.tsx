@@ -4,8 +4,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -13,7 +11,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { Toaster } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 function NotFoundComponent() {
   return (
@@ -76,66 +75,23 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Ssuke Pizza — Bold Flavors, Delivered Hot" },
-      { name: "description", content: "Order pizzas, burgers, chicken and Kenyan classics from Ssuke Pizza. Fast delivery, made fresh." },
-      { name: "author", content: "Ssuke Pizza" },
-      { property: "og:title", content: "Ssuke Pizza — Bold Flavors, Delivered Hot" },
-      { property: "og:description", content: "Order pizzas, burgers, chicken and Kenyan classics from Ssuke Pizza. Fast delivery, made fresh." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Ssuke Pizza — Bold Flavors, Delivered Hot" },
-      { name: "twitter:description", content: "Order pizzas, burgers, chicken and Kenyan classics from Ssuke Pizza. Fast delivery, made fresh." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11644781-730c-4cf7-89a4-0536ed7b072e/id-preview-18276ae0--82744244-169d-4861-a236-ef474ad8084e.lovable.app-1781182750707.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/11644781-730c-4cf7-89a4-0536ed7b072e/id-preview-18276ae0--82744244-169d-4861-a236-ef474ad8084e.lovable.app-1781182750707.png" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap",
-      },
-    ],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
+
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      if (user) queryClient.invalidateQueries();
     });
-    return () => sub.subscription.unsubscribe();
+    return () => unsubscribe();
   }, [router, queryClient]);
 
   return (

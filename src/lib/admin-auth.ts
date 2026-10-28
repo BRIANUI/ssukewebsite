@@ -1,20 +1,29 @@
-const KEY = "ssuke_admin_v1";
-export const ADMIN_USERNAME = "ssukepizza";
-export const ADMIN_PASSWORD = "ssukepizza26";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { auth } from "./firebase";
 
-export function isAdminSignedIn(): boolean {
+export async function isAdminSignedIn(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(KEY) === "1";
+  if (auth.currentUser) return true;
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(false), 5000);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(timeout);
+      unsubscribe();
+      resolve(!!user);
+    });
+  });
 }
 
-export function signInAdmin(username: string, password: string): boolean {
-  if (username.trim() === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    window.localStorage.setItem(KEY, "1");
+export async function signInAdmin(email: string, password: string): Promise<boolean> {
+  try {
+    await signInWithEmailAndPassword(auth, email.trim(), password);
     return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
-export function signOutAdmin() {
-  if (typeof window !== "undefined") window.localStorage.removeItem(KEY);
+export async function signOutAdmin() {
+  await signOut(auth);
 }
